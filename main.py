@@ -46,9 +46,9 @@ def main(api_key):
 
     logger.info("rendering ")
     with ui.row().classes("justify-evenly items-center w-full"):
-        with ui.column().classes(""):
+        with ui.column():
             weather_widget()
-        with ui.column().classes(""):
+        with ui.column():
             stm_widget(api_key)
 
 
