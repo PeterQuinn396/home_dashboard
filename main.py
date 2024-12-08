@@ -1,4 +1,12 @@
 from nicegui import ui
+import argparse
+import os
+import logging
+from stm import stm_widget
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def weather_widget():
@@ -17,12 +25,34 @@ def weather_widget():
         """)
 
 
-@ui.page("/")
-def main():
+def _parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    default_key = os.getenv("STM_API_KEY")
+    parser.add_argument(
+        "--stm-api-key",
+        default=default_key,
+        required=default_key is None,
+        help="Defaults to STM_API_KEY",
+    )
+
+    return parser.parse_args()
+
+
+# @ui.page("/")
+def main(api_key):
     # ui.markdown("# Home Dashboard")
 
-    weather_widget()
-    ui.run(dark=True)
+    logger.info("rendering ")
+    with ui.row().classes("justify-evenly items-center w-full"):
+        with ui.column().classes(""):
+            weather_widget()
+        with ui.column().classes(""):
+            stm_widget(api_key)
 
 
-main()
+if __name__ == "__main__":
+    args = _parse_args()
+    main(api_key=args.stm_api_key)
+    ui.run(dark=True, reload=False)
