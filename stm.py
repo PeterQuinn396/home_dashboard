@@ -28,8 +28,8 @@ class STMStatus:
     This will get rendered to UI elements.
     """
 
-    green_line: LineStatus = LineStatus()
-    orange_line: LineStatus = LineStatus()
+    metro_line_green: LineStatus = LineStatus()
+    metro_line_orange: LineStatus = LineStatus()
     bus_61_est: LineStatus = LineStatus()
 
 
@@ -45,11 +45,11 @@ def _parse_status_json(json_info: dict) -> STMStatus:
         # check green line
         match route_name:
             case "1":
-                status.green_line.ok = desc == "Normal métro service"
-                status.green_line.desc = desc
+                status.metro_line_green.ok = desc == "Normal métro service"
+                status.metro_line_green.desc = desc
             case "2":
-                status.orange_line.desc = desc == "Normal métro service"
-                status.orange_line.desc = desc
+                status.metro_line_orange.ok = desc == "Normal métro service"
+                status.metro_line_orange.desc = desc
             case "61":
                 if direction == "E":
                     status.bus_61_est.desc = desc
@@ -57,23 +57,17 @@ def _parse_status_json(json_info: dict) -> STMStatus:
     return status
 
 
-def _get_current_stm_status(api_key) -> STMStatus | None:
+def _get_stm_json(api_key) -> dict:
     response = requests.get(
         f"{STM_API_ROUTE}/etatservice",
         headers={"accept": "application/json", "apiKey": api_key},
     )
 
-    logger.info(f"Got response {response.status_code}")
-
-    # logger.info(f"{response.json()}")
-
     if response.ok:
-        status = _parse_status_json(response.json())
-        logger.info(f"Got status: {status}")
-        return status
+        return response.json()
     else:
-        logger.error("Got bad response")
-        return None
+        logger.error("Failed to fetch STM data")
+        return {}
 
 
 def _status_icon(status: bool):
@@ -87,17 +81,22 @@ def stm_widget(api_key: str):
     @ui.refreshable
     def render_info_panel():
         logger.info("Rendering stm data")
-        status = _get_current_stm_status(api_key)
+        stm_json = _get_stm_json(api_key)
+        if not stm_json:
+            ui.label("Failed to fetch STM data").classes("text-red")
+            return
+
+        status: STMStatus = _parse_status_json(stm_json)
         with ui.column():
             with ui.row():
                 ui.icon(name="subway", color="green", size=ICON_SIZE)
-                ui.label(f"{status.green_line.desc} ")
-                _status_icon(status.green_line.ok)
+                ui.label(f"{status.metro_line_green.desc} ")
+                _status_icon(status.metro_line_green.ok)
 
             with ui.row():
                 ui.icon(name="subway", color="orange", size=ICON_SIZE)
-                ui.label(f"{status.orange_line.desc} ")
-                _status_icon(status.orange_line.ok)
+                ui.label(f"{status.metro_line_orange.desc} ")
+                _status_icon(status.metro_line_orange.ok)
 
             with ui.row():
                 ui.icon(name="directions_bus", color="white", size=ICON_SIZE)
@@ -117,6 +116,12 @@ if __name__ == "__main__":
     if api_key is None:
         raise ValueError("API key was none")
 
-    status = _get_current_stm_status(api_key)
+    stm_json = _get_stm_json(api_key)
+
+    # dump json to file for debugging
+    with open("stm_debug.json", "w") as f:
+        json.dump(stm_json, f, indent=4)
+
+    status = _parse_status_json(stm_json)
 
     print(status)

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Panorama Horizontal Pan</title>
+<style>
+  body, html {
+    margin: 0; padding: 0; height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #111;
+  }
+  #container {
+    position: relative;
+    width: 800px;
+    height: 450px;
+    overflow: hidden;
+    border: 3px solid #444;
+    background-color: black;
+  }
+  #panorama {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 100%;
+    width: auto; /* keep natural width */
+    transform: translateY(-50%);
+    will-change: transform;
+    user-select: none;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="container">
+  <img id="panorama" src="{{ PANORAMA_URL }}" alt="Panorama" />
+</div>
+
+<script>
+  (() => {
+    const img = document.getElementById('panorama');
+    const container = document.getElementById('container');
+
+    let offsetX = 0;
+    let direction = 1;
+    const panSpeed = 0.015;
+    const pauseDuration = 1000;
+    let isPaused = false;
+    let pauseStart = 0;
+    let maxOffset = 0;
+
+    function calculateMaxOffset() {
+      if (!img.naturalWidth || !img.naturalHeight) {
+        maxOffset = 0;
+        return;
+      }
+      const containerWidth = container.clientWidth;
+      // Calculate the displayed image width based on fixed container height and natural aspect ratio
+      const imgDisplayWidth = (img.naturalWidth / img.naturalHeight) * container.clientHeight;
+      maxOffset = Math.max(0, imgDisplayWidth - containerWidth);
+    }
+
+    function animate(timestamp) {
+      if (!animate.lastTime) animate.lastTime = timestamp;
+      const delta = timestamp - animate.lastTime;
+      animate.lastTime = timestamp;
+
+      if (isPaused) {
+        if (timestamp - pauseStart >= pauseDuration) {
+          isPaused = false;
+          direction *= -1;
+        }
+      } else {
+        offsetX += direction * panSpeed * delta;
+
+        if (offsetX <= 0) {
+          offsetX = 0;
+          isPaused = true;
+          pauseStart = timestamp;
+        }
+        if (offsetX >= maxOffset) {
+          offsetX = maxOffset;
+          isPaused = true;
+          pauseStart = timestamp;
+        }
+      }
+
+      img.style.transform = `translateX(${-offsetX}px) translateY(-50%)`;
+      requestAnimationFrame(animate);
+    }
+
+    img.onload = () => {
+      calculateMaxOffset();
+      requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('resize', () => {
+      calculateMaxOffset();
+    });
+  })();
+</script>
+
+</body>
+</html>
